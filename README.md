@@ -44,6 +44,20 @@ The first refresh takes about 30 seconds: 5 requests spaced 5 s apart, per BidRL
 
 To open it from your phone on the same Wi-Fi without Tailscale, set `HOST=0.0.0.0` and browse to `http://<your-computer-ip>:3000`. Don't expose it to the internet: it has no login.
 
+## Automatic updates (Windows)
+
+Set the app up once with Git instead of the ZIP. Then `start.bat` fetches the latest version every time it starts, and `update.bat` updates and restarts it on demand.
+
+1. Install Git from https://git-scm.com/download/win, accepting the defaults.
+2. In Command Prompt:
+   ```bat
+   git clone -b claude/bidrl-amazon-price-tracker-wrmbpf https://github.com/machuki21/supabase_verification_g1y8loqhh6.git "%USERPROFILE%\bidrl-tracker"
+   ```
+   A GitHub sign-in window opens the first time. The repo is private, so sign in.
+3. Copy `.env` (and the `data` folder, if you want to keep your list) from the old folder into `%USERPROFILE%\bidrl-tracker`.
+
+Your `.env` and `data` are never touched by updates.
+
 ## Amazon prices
 
 Amazon blocks scraping, so live Amazon prices come from a paid search API. Choose one:

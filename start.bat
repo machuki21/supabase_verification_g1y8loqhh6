@@ -6,6 +6,12 @@ set URL=http://127.0.0.1:3000
 
 curl -s -o nul %URL%/api/status && goto open
 
+rem Get the latest version first (only works if this folder was set up with git clone).
+if exist ".git" (
+  echo Checking for updates...
+  git pull --ff-only -q >nul 2>&1
+)
+
 start "BidRL Deal Tracker (close this window to stop it)" /min cmd /k npm start
 
 for /l %%i in (1,1,30) do (
