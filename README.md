@@ -24,6 +24,8 @@ cp .env.example .env     # optional: edit locations, Amazon key, alerts
 npm start                # http://127.0.0.1:3000
 ```
 
+**Windows:** double-click `start.bat`. It starts the tracker in a minimized window and opens the page; double-clicking it again while it's running just opens the page. To have it start automatically when you log in, press `Win+R`, type `shell:startup`, and put a shortcut to `start.bat` in that folder.
+
 The first refresh takes about 30 seconds: 5 requests spaced 5 s apart, per BidRL's robots.txt crawl delay. After that it refreshes every 15 minutes, and the page updates itself every minute.
 
 To open it from your phone on the same Wi-Fi, set `HOST=0.0.0.0` and browse to `http://<your-computer-ip>:3000`. Don't expose it to the internet: it has no login.
