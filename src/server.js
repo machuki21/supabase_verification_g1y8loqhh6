@@ -40,6 +40,7 @@ export function createApp(cfg, { fetchImpl = fetch } = {}) {
         title: az.title,
         url: az.url,
         confidence: az.confidence,
+        generic: Boolean(az.generic),
         checkedAt: az.checkedAt,
         error: az.error,
       },
@@ -57,7 +58,7 @@ export function createApp(cfg, { fetchImpl = fetch } = {}) {
   async function runLookups() {
     if (!amazon.enabled) return;
     const items = Object.values(store.data.items);
-    const todo = lookupCandidates(items, amazon, cfg.amazon);
+    const todo = lookupCandidates(items, amazon, cfg.amazon, Date.now(), { priorityIds: new Set(Object.keys(store.data.watchlist)) });
     if (todo.length) log(`Amazon: looking up ${todo.length} items (${amazon.remainingToday()} lookups left today)`);
     for (const item of todo) {
       const r = await amazon.lookup(item);
@@ -327,8 +328,15 @@ export function createApp(cfg, { fetchImpl = fetch } = {}) {
           if (!Number.isFinite(maxBid) || maxBid <= 0 || maxBid > 100000) return send(res, 400, { error: 'Max bid must be between $0 and $100,000' });
           maxBid = Math.floor(maxBid * 100) / 100;
         }
+        const isNew = !watchlist.has(id);
         const v = watchlist.set(id, maxBid);
-        return v ? send(res, 200, v) : send(res, 404, { error: 'Item not found (it may have ended)' });
+        if (!v) return send(res, 404, { error: 'Item not found (it may have ended)' });
+        const item = store.data.items[id];
+        if (isNew && item && amazon.enabled && !amazon.cached(item) && amazon.remainingToday() > 0) {
+          // Starred = worth a lookup now. Runs in the background; the list picks it up on its next refresh.
+          amazon.lookup(item).catch((err) => log(`Amazon lookup failed: ${err.message}`));
+        }
+        return send(res, 200, v);
       }
       if (!wm[2] && req.method === 'DELETE') {
         watchlist.remove(id);

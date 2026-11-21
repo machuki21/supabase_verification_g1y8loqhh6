@@ -67,12 +67,16 @@ Amazon blocks scraping, so live Amazon prices come from a paid search API. Choos
 | [SerpApi](https://serpapi.com) | `AMAZON_PROVIDER=serpapi` | Amazon Search engine |
 | [Rainforest API](https://www.rainforestapi.com) | `AMAZON_PROVIDER=rainforest` | Amazon-only data API |
 
-Then set `AMAZON_API_KEY`. To keep cost bounded:
+Then set `AMAZON_API_KEY`. SerpApi's free plan is 250 searches a month, so the default cap is `AMAZON_DAILY_LOOKUPS=8`. Raise it if you pay for more. Lookups are spent in this order:
 
-- Only items ending within `AMAZON_LOOKUP_WINDOW_HOURS` (default 24 h) are looked up, highest stated retail first.
-- Duplicate lots share one lookup, and results are cached for 3 days.
-- Hard cap: `AMAZON_DAILY_LOOKUPS` (default 100 per day).
-- A match is trusted only if the Amazon title covers most of the BidRL title, including brand and model number (`AMAZON_MIN_CONFIDENCE`). The cheapest trusted result is used. Weak matches are shown but not used.
+1. **Your ☆ starred items**, looked up the moment you star them.
+2. Items ending within `AMAZON_LOOKUP_WINDOW_HOURS` (default 24 h), highest stated retail first. One- and two-word titles ("Light Fixture") are skipped here as too vague. Star one to look it up anyway.
+
+Duplicate lots share one search, and results are cached for 3 days. The **Check Amazon** button on any item spends one search on demand.
+
+How the price is picked:
+- **Specific titles** (brand or model number, e.g. "Brother HC1850 Sewing Machine"): the cheapest Amazon result whose title closely matches.
+- **General titles** (e.g. "Mobile Metal Tool Cabinet"): the *typical* (median) price of at least 3 similar listings, labeled "typical Amazon price". The cheapest "tool cabinet" on Amazon says nothing about this one, so treat this as an estimate and check the photos.
 
 Without a provider, the app uses the listing's stated retail (about 10% of items) and gives each item a **Search Amazon** link plus **Set price**, so you can enter the price yourself.
 

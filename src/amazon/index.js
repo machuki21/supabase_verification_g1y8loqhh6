@@ -1,6 +1,6 @@
 import { searchSerpApi } from './serpapi.js';
 import { searchRainforest } from './rainforest.js';
-import { pickMatch } from '../match.js';
+import { pickMatch, productTokens } from '../match.js';
 import { cacheKey } from '../text.js';
 
 const PROVIDERS = { serpapi: searchSerpApi, rainforest: searchRainforest };
@@ -63,6 +63,7 @@ export function createAmazonLookup(cfg, store, { fetchImpl = fetch, log = () => 
           asin: m.asin ?? null,
           url: m.url ? safeAmazonUrl(m.url, cfg.domain) : null,
           confidence: m.confidence ?? null,
+          generic: Boolean(m.generic),
           candidates: candidates.length,
         };
       } catch (err) {
@@ -81,13 +82,21 @@ export function createAmazonLookup(cfg, store, { fetchImpl = fetch, log = () => 
   };
 }
 
-/** Which items to spend lookups on this cycle: ending soon, highest stated retail first, one per unique query. */
-export function lookupCandidates(items, amazon, { lookupWindowHours, perCycleLimit }, now = Date.now()) {
+/**
+ * Which items to spend lookups on this cycle, one per unique search query:
+ *  1. Your starred items (any end time, even vague titles — you asked for them)
+ *  2. Items ending within the lookup window, highest stated retail first, then soonest.
+ *     One- and two-word titles ("Light Fixture") are skipped here: too vague to be worth a paid search.
+ */
+export function lookupCandidates(items, amazon, { lookupWindowHours, perCycleLimit }, now = Date.now(), { priorityIds = new Set() } = {}) {
   const horizon = now + lookupWindowHours * 3600000;
+  const open = items.filter((i) => i.endsAt > now && i.query && !amazon.cached(i));
+  const starred = open.filter((i) => priorityIds.has(i.id)).sort((a, b) => a.endsAt - b.endsAt);
+  const rest = open
+    .filter((i) => !priorityIds.has(i.id) && i.endsAt <= horizon && productTokens(i.title).length >= 3)
+    .sort((a, b) => (b.listedRetail || 0) - (a.listedRetail || 0) || a.endsAt - b.endsAt);
   const seen = new Set();
-  return items
-    .filter((i) => i.endsAt > now && i.endsAt <= horizon && i.query && !amazon.cached(i))
-    .sort((a, b) => (b.listedRetail || 0) - (a.listedRetail || 0) || a.endsAt - b.endsAt)
+  return [...starred, ...rest]
     .filter((i) => {
       const k = cacheKey(i.query);
       if (seen.has(k)) return false;

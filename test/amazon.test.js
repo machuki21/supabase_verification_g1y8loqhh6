@@ -42,11 +42,12 @@ test('rejects non-Amazon links from the provider', async () => {
 
 test('Rainforest response parsing', async () => {
   const store = tmpStore();
-  const fetchImpl = async () => ({ ok: true, json: async () => ({ request_info: { success: true }, search_results: [{ title: 'GoveeLife Smart Tower Fan 42 inch', price: { value: 129.99 }, link: 'https://www.amazon.com/dp/B2', asin: 'B2' }] }) });
+  const fetchImpl = async () => ({ ok: true, json: async () => ({ request_info: { success: true }, search_results: [{ title: 'GoveeLife Smart Tower Fan 42 inch H7102', price: { value: 129.99 }, link: 'https://www.amazon.com/dp/B2', asin: 'B2' }] }) });
   const az = createAmazonLookup(cfg({ provider: 'rainforest' }), store, { fetchImpl });
-  const r = await az.lookup(item('1', 'GoveeLife Smart Tower Fan'));
+  const r = await az.lookup(item('1', 'GoveeLife Smart Tower Fan H7102'));
   assert.equal(r.status, 'matched');
   assert.equal(r.price, 129.99);
+  assert.equal(r.generic, false);
 });
 
 test('errors are cached briefly, not for days', async () => {
@@ -62,11 +63,23 @@ test('lookupCandidates: in window, not cached, deduped, highest retail first', (
   const az = createAmazonLookup(cfg({ dailyLimit: 100 }), store);
   const now = Date.now();
   const list = lookupCandidates([
-    item('1', 'Cheap Thing', { listedRetail: 10 }),
-    item('2', 'Pricey Thing', { listedRetail: 500 }),
-    item('3', 'Pricey Thing', { listedRetail: 500 }),
+    item('1', 'Cheap Plastic Storage Bin', { listedRetail: 10 }),
+    item('2', 'Pricey Espresso Machine Deluxe', { listedRetail: 500 }),
+    item('3', 'Pricey Espresso Machine Deluxe', { listedRetail: 500 }),
     item('4', 'Far Future', { endsAt: now + 5 * 86400000 }),
     item('5', 'Ended', { endsAt: now - 1 }),
   ], az, { lookupWindowHours: 24, perCycleLimit: 10 }, now);
   assert.deepEqual(list.map((i) => i.id), ['2', '1']);
+});
+
+test('lookupCandidates: starred items first (any end time, even vague); vague unstarred titles skipped', () => {
+  const store = tmpStore();
+  const az = createAmazonLookup(cfg({ dailyLimit: 100 }), store);
+  const now = Date.now();
+  const list = lookupCandidates([
+    item('1', 'Ceiling Light', { endsAt: now + 3600000 }),
+    item('2', 'GoveeLife Smart Tower Fan', { endsAt: now + 7200000 }),
+    item('3', 'Air Mattress', { endsAt: now + 4 * 86400000 }),
+  ], az, { lookupWindowHours: 24, perCycleLimit: 10 }, now, { priorityIds: new Set(['3']) });
+  assert.deepEqual(list.map((i) => i.id), ['3', '2']);
 });

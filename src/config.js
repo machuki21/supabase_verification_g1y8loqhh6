@@ -41,7 +41,7 @@ export function loadConfig() {
     amazon: {
       provider: provider || null,
       apiKey,
-      dailyLimit: num('AMAZON_DAILY_LOOKUPS', 100, { min: 0 }),
+      dailyLimit: num('AMAZON_DAILY_LOOKUPS', 8, { min: 0 }), // SerpApi free plan: 250/month ≈ 8/day
       perCycleLimit: num('AMAZON_LOOKUPS_PER_CYCLE', 25, { min: 0 }),
       lookupWindowHours: num('AMAZON_LOOKUP_WINDOW_HOURS', 24, { min: 1 }),
       cacheDays: num('AMAZON_CACHE_DAYS', 3, { min: 0 }),

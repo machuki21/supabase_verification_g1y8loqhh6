@@ -1,6 +1,7 @@
 const $ = (sel) => document.querySelector(sel);
 const money = (n) => (n === null || n === undefined ? '—' : `$${Number(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
 const SOURCE_LABEL = { amazon: 'Amazon', listed_retail: 'listed retail', manual: 'your price' };
+const sourceLabel = (ref) => (ref.source === 'amazon' && ref.generic ? 'typical Amazon price' : SOURCE_LABEL[ref.source]);
 const STATUS_LABEL = { good: 'Good deal', fair: 'Fair', over: 'Over value', no_reference: 'No price' };
 
 const state = {
@@ -145,7 +146,7 @@ function renderCard(d) {
   a.href = link;
 
   node.querySelector('.ref').textContent = d.reference ? money(d.reference.price) : '—';
-  node.querySelector('.ref').title = d.reference ? `Source: ${SOURCE_LABEL[d.reference.source]}` : '';
+  node.querySelector('.ref').title = d.reference ? `Source: ${sourceLabel(d.reference)}` : '';
   node.querySelector('.next').textContent = money(d.nextBid);
   node.querySelector('.max').textContent = money(d.maxBid);
   node.querySelector('.walk').textContent = money(d.walkAwayBid);
@@ -153,13 +154,15 @@ function renderCard(d) {
   const sav = node.querySelector('.savings');
   if (d.reference) {
     const word = d.savingsAmount >= 0 ? 'save' : 'lose';
-    sav.textContent = `At the next bid you pay ${money(d.nextAllIn)} all-in (${d.buyerPremiumPct}% premium + tax) — ${word} ${money(Math.abs(d.savingsAmount))} (${d.savingsPct}%) vs ${SOURCE_LABEL[d.reference.source]}.`;
+    sav.textContent = `At the next bid you pay ${money(d.nextAllIn)} all-in (${d.buyerPremiumPct}% premium + tax) — ${word} ${money(Math.abs(d.savingsAmount))} (${d.savingsPct}%) vs ${sourceLabel(d.reference)}.`;
   } else {
     sav.textContent = `Next bid ${money(d.nextBid)} = ${money(d.nextAllIn)} all-in. Set a price to get a max bid.`;
   }
 
   const match = node.querySelector('.match');
   if (d.override) match.textContent = 'Using your price.';
+  else if (d.amazon?.status === 'matched' && d.amazon.generic)
+    match.textContent = `Estimate: ${d.amazon.title}. The listing title is too general for an exact match, so check the photos.`;
   else if (d.amazon?.status === 'matched') match.textContent = `Amazon match (${Math.round(d.amazon.confidence * 100)}% title match): ${d.amazon.title}`;
   else if (d.amazon?.status === 'low_confidence') match.textContent = `Amazon's closest result was a weak match (${Math.round(d.amazon.confidence * 100)}%), not used: ${d.amazon.title} — ${money(d.amazon.price)}`;
   else if (d.amazon?.status === 'no_results') match.textContent = 'No priced Amazon results.';

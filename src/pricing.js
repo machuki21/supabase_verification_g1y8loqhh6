@@ -18,7 +18,9 @@ export function bidForBudget(budget, { buyerPremiumPct, salesTaxPct, fixedFee = 
  */
 export function chooseReference(item, amazon, override, settings) {
   if (override?.price > 0) return { price: override.price, source: 'manual', url: override.url || null };
-  if (amazon?.status === 'matched' && amazon.price > 0) return { price: amazon.price, source: 'amazon', url: amazon.url || null };
+  if (amazon?.status === 'matched' && amazon.price > 0) {
+    return { price: amazon.price, source: 'amazon', url: amazon.url || null, generic: Boolean(amazon.generic) };
+  }
   if (settings.trustListedRetail && item.listedRetail > 0) return { price: item.listedRetail, source: 'listed_retail', url: null };
   return null;
 }
