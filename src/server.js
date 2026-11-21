@@ -10,6 +10,7 @@ import { createAmazonLookup, lookupCandidates, amazonSearchUrl } from './amazon/
 import { chooseReference, evaluateDeal } from './pricing.js';
 import { createAlerter } from './alerts.js';
 import { createWatchlist } from './watchlist.js';
+import { findSuggestions, digestMessage } from './wishes.js';
 import { cacheKey } from './text.js';
 
 const log = (...a) => console.log(new Date().toISOString(), ...a);
@@ -53,6 +54,70 @@ export function createApp(cfg, { fetchImpl = fetch } = {}) {
     };
   }
 
+  function suggestions() {
+    const starred = Object.values(store.data.watchlist).map((w) => w.item);
+    return findSuggestions(Object.values(store.data.items), store.data.wishes, starred);
+  }
+
+  /** After each poll: one notification listing suggestions you haven't been told about yet. */
+  async function runWishDigest() {
+    if (!alerter.enabled) return;
+    const s = settings();
+    const fresh = suggestions()
+      .filter(({ item }) => !store.data.suggested[item.id])
+      .map(({ item, reasons }) => ({ deal: buildDeal(item, s), reasons }));
+    const msg = digestMessage(fresh, cfg.alerts.appUrl);
+    if (msg && (await alerter.sendMessage(msg))) {
+      for (const f of fresh) store.data.suggested[f.deal.id] = Date.now();
+      log(`Suggestion digest sent: ${fresh.length} items`);
+      store.save();
+    }
+  }
+
+  /** Compact snapshot for an assistant: starred items, suggestions, and a ready-to-read text version. */
+  function summary() {
+    const s = settings();
+    const now = Date.now();
+    const pick = (d) => ({
+      id: d.id,
+      title: d.title,
+      url: d.url,
+      city: d.city,
+      endsAt: new Date(d.endsAt).toISOString(),
+      minutesLeft: Math.max(0, Math.round((d.endsAt - now) / 60000)),
+      nextBid: d.nextBid,
+      newPrice: d.reference?.price ?? null,
+      priceSource: d.reference ? (d.reference.generic ? 'amazon_typical' : d.reference.source) : null,
+      maxBid: d.maxBid,
+      dontGoOver: d.walkAwayBid,
+    });
+    const starred = watchlist.all().map((d) => ({ ...pick(d), yourMax: d.watch.effectiveMax, status: d.watch.status }));
+    const might = suggestions()
+      .slice(0, 20)
+      .map(({ item, reasons }) => ({ ...pick(buildDeal(item, s)), reasons }));
+    const money = (n) => (n === null || n === undefined ? 'n/a' : `$${n.toFixed(2)}`);
+    const left = (m) => (m < 60 ? `${m}m` : m < 2880 ? `${Math.floor(m / 60)}h ${m % 60}m` : `${Math.floor(m / 1440)}d ${Math.floor((m % 1440) / 60)}h`);
+    const active = starred.filter((x) => x.status !== 'ended');
+    const lines = [
+      `BidRL tracker (${(cfg.locations.length ? cfg.locations : ['all locations']).join(', ')}), updated ${store.data.lastPoll?.finishedAt ? new Date(store.data.lastPoll.finishedAt).toLocaleString() : 'never'}.`,
+      active.length ? `Starred (${active.length}):` : 'Nothing starred.',
+      ...active.map(
+        (x) =>
+          `- ${x.title} (${x.city}): next bid ${money(x.nextBid)}, your max ${money(x.yourMax)}, ${x.status === 'over_max' ? 'PAST YOUR MAX' : 'ok'}, ends in ${left(x.minutesLeft)}. ${x.url || ''}`,
+      ),
+      might.length ? `You might want (${might.length}):` : 'No new suggestions.',
+      ...might.map((x) => `- ${x.title} (${x.city}): next bid ${money(x.nextBid)}, max bid ${money(x.maxBid)}, ends in ${left(x.minutesLeft)}, ${x.reasons[0]}. ${x.url || ''}`),
+    ];
+    return {
+      generatedAt: new Date(now).toISOString(),
+      lastRefresh: store.data.lastPoll,
+      wishes: store.data.wishes.map((w) => w.terms),
+      starred,
+      youMightWant: might,
+      text: lines.join('\n'),
+    };
+  }
+
   const watchlist = createWatchlist({ store, buildDeal, alerter, remindMinutes: cfg.watch.remindMinutes, fetchImpl, log });
 
   async function runLookups() {
@@ -86,6 +151,7 @@ export function createApp(cfg, { fetchImpl = fetch } = {}) {
     const now = Date.now();
     const live = store.data.items;
     for (const id of Object.keys(store.data.alerted)) if (!live[id]) delete store.data.alerted[id];
+    for (const id of Object.keys(store.data.suggested)) if (!live[id]) delete store.data.suggested[id];
     for (const id of Object.keys(store.data.overrides)) {
       if (!live[id] && now - (store.data.overrides[id].setAt || 0) > 30 * 86400000) delete store.data.overrides[id];
     }
@@ -127,6 +193,7 @@ export function createApp(cfg, { fetchImpl = fetch } = {}) {
       await runLookups();
       await runAlerts();
       await watchlist.tick();
+      await runWishDigest();
     } catch (err) {
       // Keep the previous item list; just record the failure.
       const msg = err.cause?.message ? `${err.message} (${err.cause.message})` : err.message;
@@ -298,6 +365,23 @@ export function createApp(cfg, { fetchImpl = fetch } = {}) {
     if (req.method === 'GET' && p === '/api/status') return send(res, 200, status());
     if (req.method === 'GET' && p === '/api/settings') return send(res, 200, settings());
     if (req.method === 'GET' && p === '/api/watchlist') return send(res, 200, { entries: watchlist.all() });
+    if (req.method === 'GET' && p === '/api/summary') {
+      // Read-only feed for an assistant (e.g. Galatea). Optional FEED_TOKEN guards it if it's ever exposed.
+      if (cfg.feedToken) {
+        const given = url.searchParams.get('token') || (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
+        if (given !== cfg.feedToken) return send(res, 401, { error: 'Missing or wrong token' });
+      }
+      return send(res, 200, summary());
+    }
+    if (req.method === 'GET' && p === '/api/wishes') {
+      const s = settings();
+      return send(res, 200, {
+        wishes: store.data.wishes,
+        suggestions: suggestions()
+          .slice(0, 100)
+          .map(({ item, reasons }) => ({ ...buildDeal(item, s), reasons })),
+      });
+    }
 
     const isWrite = ['POST', 'PUT', 'DELETE'].includes(req.method);
     if (isWrite && p.startsWith('/api/') && !sameOriginWrite(req)) {
@@ -315,6 +399,28 @@ export function createApp(cfg, { fetchImpl = fetch } = {}) {
       if (polling) return send(res, 409, { error: 'A refresh is already running' });
       poll();
       return send(res, 202, { started: true });
+    }
+
+    if (req.method === 'POST' && p === '/api/wishes') {
+      const terms = String((await readJson(req)).terms || '')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .slice(0, 60);
+      if (!terms) return send(res, 400, { error: 'Type something to look for, e.g. "dyson" or "pool vacuum"' });
+      if (store.data.wishes.length >= 50) return send(res, 400, { error: 'You have 50 already. Remove some first.' });
+      if (store.data.wishes.some((w) => w.terms.toLowerCase() === terms.toLowerCase())) {
+        return send(res, 409, { error: 'Already on your wish list' });
+      }
+      const wish = { id: `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`, terms, createdAt: Date.now() };
+      store.data.wishes.push(wish);
+      store.save();
+      return send(res, 201, wish);
+    }
+    const dm = p.match(/^\/api\/wishes\/([a-z0-9]+)$/);
+    if (dm && req.method === 'DELETE') {
+      store.data.wishes = store.data.wishes.filter((w) => w.id !== dm[1]);
+      store.save();
+      return send(res, 200, { removed: true });
     }
 
     const wm = p.match(/^\/api\/watchlist\/(\d+)(\/refresh)?$/);

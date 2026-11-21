@@ -29,6 +29,8 @@ export function loadConfig() {
     host: str('HOST', '127.0.0.1'),
     port: num('PORT', 3000, { min: 1, max: 65535 }),
     dataFile: str('DATA_FILE', 'data/db.json'),
+    // Optional password for the read-only /api/summary feed (for assistants like Galatea).
+    feedToken: str('FEED_TOKEN'),
 
     // BidRL polling. robots.txt asks for Crawl-delay: 5, so never go below 5s between requests.
     pollMinutes: num('POLL_MINUTES', 30, { min: 5 }),
@@ -63,6 +65,8 @@ export function loadConfig() {
     },
 
     alerts: {
+      // Your tracker's link (e.g. the https://….ts.net one); tapping a digest notification opens it.
+      appUrl: str('APP_URL'),
       ntfyUrl: str('NTFY_URL'),
       webhookUrl: str('ALERT_WEBHOOK_URL'),
       minSavingsPct: num('ALERT_MIN_SAVINGS_PCT', 50, { min: 0, max: 100 }),

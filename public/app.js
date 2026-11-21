@@ -311,24 +311,83 @@ function renderWatch(node, d) {
 async function loadList() {
   const seq = ++loadSeq;
   let data;
+  let wishData;
   try {
-    data = await api('/api/watchlist');
+    [data, wishData] = await Promise.all([api('/api/watchlist'), api('/api/wishes')]);
   } catch (err) {
     $('#summary').textContent = `Couldn't load your list: ${err.message}`;
     return;
   }
   if (seq !== loadSeq) return;
+  renderWishes(wishData.wishes);
   const live = data.entries.filter((e) => e.watch.status !== 'ended').length;
-  $('#summary').textContent = `${live} active, ${data.entries.length - live} ended.`;
-  const grid = $('#deals');
+  $('#summary').textContent = `${live} starred and active, ${data.entries.length - live} ended · ${wishData.suggestions.length} you might want.`;
+
+  const nodes = [];
   if (!data.entries.length) {
     const p = document.createElement('p');
     p.className = 'empty';
-    p.textContent = 'Nothing here yet. Tap ☆ Want on any item in Deals to add it.';
-    grid.replaceChildren(p);
-  } else grid.replaceChildren(...data.entries.map(renderCard));
+    p.textContent = 'Nothing starred yet. Tap ☆ Want on any item to add it.';
+    nodes.push(p);
+  } else nodes.push(...data.entries.map(renderCard));
+
+  const h = document.createElement('h2');
+  h.className = 'section-title';
+  h.textContent = `You might want (${wishData.suggestions.length})`;
+  nodes.push(h);
+  if (!wishData.suggestions.length) {
+    const p = document.createElement('p');
+    p.className = 'empty';
+    p.textContent = wishData.wishes.length
+      ? 'Nothing open matches your wish list right now. You get a notification when something shows up.'
+      : 'Add words above (like "dyson" or "air fryer") and matching items show up here.';
+    nodes.push(p);
+  } else {
+    for (const d of wishData.suggestions) {
+      const card = renderCard(d);
+      const r = document.createElement('p');
+      r.className = 'reasons';
+      r.textContent = `Suggested because it ${d.reasons.join(' and ')}`;
+      card.querySelector('.title').after(r);
+      nodes.push(card);
+    }
+  }
+  $('#deals').replaceChildren(...nodes);
   $('#more').hidden = true;
 }
+
+function renderWishes(wishes) {
+  $('#wish-list').replaceChildren(
+    ...wishes.map((w) => {
+      const chip = document.createElement('span');
+      chip.className = 'chip on wish';
+      chip.textContent = w.terms;
+      const x = document.createElement('button');
+      x.type = 'button';
+      x.textContent = '×';
+      x.setAttribute('aria-label', `Remove ${w.terms}`);
+      x.addEventListener('click', async () => {
+        await api(`/api/wishes/${w.id}`, { method: 'DELETE', body: '{}' }).catch((err) => alert(err.message));
+        loadList();
+      });
+      chip.append(x);
+      return chip;
+    }),
+  );
+}
+
+$('#wish-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const input = $('#wish-input');
+  if (!input.value.trim()) return;
+  try {
+    await api('/api/wishes', { method: 'POST', body: JSON.stringify({ terms: input.value }) });
+    input.value = '';
+    loadList();
+  } catch (err) {
+    alert(err.message);
+  }
+});
 
 function setView(v) {
   state.view = v;
@@ -338,6 +397,7 @@ function setView(v) {
   $('#tab-list').setAttribute('aria-selected', String(v === 'list'));
   $('#filters').hidden = v === 'list';
   $('#list-help').hidden = v !== 'list';
+  $('#wishes').hidden = v !== 'list';
   try {
     localStorage.setItem('view', v);
   } catch {

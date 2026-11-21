@@ -72,6 +72,15 @@
   </section>
 
   <p id="summary" class="muted summary"></p>
+  <section id="wishes" class="panel wishes" hidden aria-label="Wish list">
+    <form id="wish-form" class="row">
+      <label for="wish-input">Alert me about</label>
+      <input id="wish-input" type="text" maxlength="60" placeholder='e.g. dyson, pool vacuum, air fryer' autocomplete="off">
+      <button type="submit">Add</button>
+    </form>
+    <div id="wish-list" class="chips"></div>
+    <p class="muted small">Items matching these words, or similar to ones you've starred, show up under "You might want" below and in one phone notification per check.</p>
+  </section>
   <p id="list-help" class="muted summary" hidden>Starred items. Enter your max on BidRL as a max bid and it bids for you, up to that amount and no further. Without your own max, the tracker's max bid is used.</p>
   <main id="deals" class="grid" aria-live="polite"></main>
   <div class="row center"><button id="more" type="button" class="secondary" hidden>Show more</button></div>

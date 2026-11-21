@@ -6,6 +6,8 @@ const EMPTY = () => ({
   amazonCache: {},
   overrides: {},
   watchlist: {},
+  wishes: [],
+  suggested: {},
   settings: {},
   lookupUsage: { date: '', count: 0 },
   alerted: {},
