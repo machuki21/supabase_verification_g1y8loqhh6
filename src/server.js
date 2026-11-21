@@ -188,7 +188,10 @@ export function createApp(cfg, { fetchImpl = fetch } = {}) {
     const origin = req.headers.origin;
     if (!origin) return true;
     try {
-      return new URL(origin).host === req.headers.host;
+      // Behind a local reverse proxy (e.g. `tailscale serve`), Host may be rewritten; the original is in X-Forwarded-Host.
+      // Cross-site pages can't forge either: the JSON content-type above already forces a CORS preflight we never approve.
+      const host = new URL(origin).host;
+      return host === req.headers.host || host === req.headers['x-forwarded-host'];
     } catch {
       return false;
     }

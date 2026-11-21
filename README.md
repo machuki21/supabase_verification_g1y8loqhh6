@@ -28,7 +28,9 @@ npm start                # http://127.0.0.1:3000
 
 The first refresh takes about 30 seconds: 5 requests spaced 5 s apart, per BidRL's robots.txt crawl delay. After that it refreshes every 15 minutes, and the page updates itself every minute.
 
-To open it from your phone on the same Wi-Fi, set `HOST=0.0.0.0` and browse to `http://<your-computer-ip>:3000`. Don't expose it to the internet: it has no login.
+**On your phone, from anywhere (recommended):** install [Tailscale](https://tailscale.com/download) on your PC and phone and sign in to both with the same account. Then, with the tracker running, run `tailscale serve --bg 3000` once on the PC. It prints a private `https://<pc-name>.<tailnet>.ts.net` link that only your devices can open. Keep the PC awake.
+
+To open it from your phone on the same Wi-Fi without Tailscale, set `HOST=0.0.0.0` and browse to `http://<your-computer-ip>:3000`. Don't expose it to the internet: it has no login.
 
 ## Amazon prices
 
