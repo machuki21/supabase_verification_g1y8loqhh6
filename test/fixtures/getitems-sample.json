@@ -1,0 +1,104 @@
+{
+ "total": 3,
+ "perpage": "500",
+ "page": "1",
+ "total_pages": 1,
+ "items": [
+  {
+   "id": "26075519",
+   "auction_id": "192893",
+   "lot_number": "AAS7045",
+   "buyer_premium": "15.000",
+   "title": "GRAT 75,000 BTU Full Inverter Pool Heat Pump with WiFi App Control, Factory Sealed, Retail $2,199",
+   "description": "<p><a href=\"https://www.shopabunda.com/products/grat-75-000-btu-full-inverter-pool-heat-pump-with-wifi-app-control\" target=\"_blank\" rel=\"noopener\">https://www.shopabunda.com/products/grat-75-000-btu-full-inverter-pool-heat-pump-with-wifi-app-control</a></p>",
+   "quantity": "1",
+   "buy_now": "0.00",
+   "category_name": "Oversize General",
+   "current_bid": "201.63",
+   "bid_count": "29",
+   "minimum_bid": "201.88",
+   "end_time": "1795393800",
+   "auction_title": "High End Auction - 5151 Franklin Blvd, Sacramento - Sunday, November 22nd",
+   "mapping_city": "Sacramento",
+   "item_address": "5151 Franklin Blvd, Sacramento, CA 95820",
+   "item_url": "https://www.bidrl.com/auction/192893/item/grat-75000-btu-full-inverter-pool-heat-pump-with-wifi-app-control-factory-sealed-retail-2199-26075519/",
+   "images": [
+    {
+     "image_width": "314",
+     "image_height": "320",
+     "thumb_url": "https://d3ugkdpeq35ojy.cloudfront.net/auctionimages/192893/cp1794698949x26075519/w1inv_t.jpg",
+     "on_cdn": "1",
+     "image_url": "https://d3ugkdpeq35ojy.cloudfront.net/auctionimages/192893/cp1794698949x26075519/w1inv.jpg"
+    }
+   ],
+   "convenience_fee": "0",
+   "has_reserve": false,
+   "reserve_met": false,
+   "flat_increment": "0.25"
+  },
+  {
+   "id": "26090500",
+   "auction_id": "192995",
+   "lot_number": "AP1003",
+   "buyer_premium": "15.000",
+   "title": "Equate Aspirin 81 mg Adult Low Strength Aspirin Regimen 120 Tablets",
+   "description": "",
+   "quantity": "1",
+   "buy_now": "0.00",
+   "category_name": "Health & Beauty ",
+   "current_bid": "0.00",
+   "bid_count": "0",
+   "minimum_bid": "1.00",
+   "end_time": "1795802400",
+   "auction_title": "Health and Beauty Auction - 930 Striker Ave. Ste. D -Natomas- Nov 27",
+   "mapping_city": "Sacramento",
+   "item_address": "930 Striker Ave. Ste D, Sacramento, CA 95834",
+   "item_url": "https://www.bidrl.com/auction/192995/item/equate-aspirin-81-mg-adult-low-strength-aspirin-regimen-120-tablets-26090500/",
+   "images": [
+    {
+     "image_width": "320",
+     "image_height": "320",
+     "thumb_url": "https://d3ugkdpeq35ojy.cloudfront.net/auctionimages/192995/cp1795165522x26090500/wEquate-Low-Dose-Aspirin-Pain-Relief-Safety-Coated-Tablets-81-mg-120-Count-Compare-to-Bayer-Low-Dose-Aspirin-Active-Ingredient_a48fc218-ce24-4433-9e98-3e1a741dc36b.4e7a719a7255b9dbe6a1252542517668_t.jpg",
+     "on_cdn": "1",
+     "image_url": "https://d3ugkdpeq35ojy.cloudfront.net/auctionimages/192995/cp1795165522x26090500/wEquate-Low-Dose-Aspirin-Pain-Relief-Safety-Coated-Tablets-81-mg-120-Count-Compare-to-Bayer-Low-Dose-Aspirin-Active-Ingredient_a48fc218-ce24-4433-9e98-3e1a741dc36b.4e7a719a7255b9dbe6a1252542517668.jpg"
+    }
+   ],
+   "convenience_fee": "0",
+   "has_reserve": false,
+   "reserve_met": false,
+   "flat_increment": "0.25"
+  },
+  {
+   "id": "26090437",
+   "auction_id": "192995",
+   "lot_number": "AP1028",
+   "buyer_premium": "15.000",
+   "title": "Value Pack of Equate Non-Drowsy All Day Allergy Relief Loratadine 10 mg Tablets (300 Count Total Split Into Two 150-Tablet Bottles)",
+   "description": "",
+   "quantity": "1",
+   "buy_now": "0.00",
+   "category_name": "Health & Beauty ",
+   "current_bid": "1.00",
+   "bid_count": "1",
+   "minimum_bid": "1.25",
+   "end_time": "1795803240",
+   "auction_title": "Health and Beauty Auction - 930 Striker Ave. Ste. D -Natomas- Nov 27",
+   "mapping_city": "Sacramento",
+   "item_address": "930 Striker Ave. Ste D, Sacramento, CA 95834",
+   "item_url": "https://www.bidrl.com/auction/192995/item/value-pack-of-equate-non-drowsy-all-day-allergy-relief-loratadine-10-mg-tablets-300-count-total-split-into-two-150-tablet-bottles-26090437/",
+   "images": [
+    {
+     "image_width": "320",
+     "image_height": "320",
+     "thumb_url": "https://d3ugkdpeq35ojy.cloudfront.net/auctionimages/192995/cp1795165444x26090437/wa84b8f39-9f60-4c77-b9a4-8b09087ddb9a.12ad509e79a5976b4887361f492f48f3_t.jpeg",
+     "on_cdn": "1",
+     "image_url": "https://d3ugkdpeq35ojy.cloudfront.net/auctionimages/192995/cp1795165444x26090437/wa84b8f39-9f60-4c77-b9a4-8b09087ddb9a.12ad509e79a5976b4887361f492f48f3.jpeg"
+    }
+   ],
+   "convenience_fee": "0",
+   "has_reserve": false,
+   "reserve_met": false,
+   "flat_increment": "0.25"
+  }
+ ]
+}

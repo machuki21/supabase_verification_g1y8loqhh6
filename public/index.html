@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>BidRL Deal Tracker</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header class="top">
+    <div class="brand">
+      <h1>BidRL Deal Tracker</h1>
+      <p id="status" class="muted">Loading…</p>
+    </div>
+    <div class="top-actions">
+      <button id="refresh" type="button">Refresh now</button>
+      <button id="toggle-settings" type="button" class="secondary" aria-expanded="false" aria-controls="settings">Bid rules</button>
+    </div>
+  </header>
+
+  <form id="settings" class="panel" hidden>
+    <label>Target savings vs. new
+      <span class="input-suffix"><input name="targetSavingsPct" type="number" min="0" max="95" step="1" required><span>%</span></span>
+      <small>Max bid leaves you this much below the new price, after fees and tax.</small>
+    </label>
+    <label>Sales tax
+      <span class="input-suffix"><input name="salesTaxPct" type="number" min="0" max="20" step="0.01" required><span>%</span></span>
+      <small>Applied to bid + buyer's premium.</small>
+    </label>
+    <label>Extra cost per item
+      <span class="input-suffix"><span>$</span><input name="extraFeePerItem" type="number" min="0" max="1000" step="0.01" required></span>
+      <small>Gas, your time, etc.</small>
+    </label>
+    <label class="check"><input name="trustListedRetail" type="checkbox"> Use the listing's "Retail $X" when there's no Amazon price</label>
+    <div class="row"><button type="submit">Save rules</button><span id="settings-msg" class="muted" role="status"></span></div>
+  </form>
+
+  <section class="filters" aria-label="Filters">
+    <input id="q" type="search" placeholder="Search titles, categories, lot #">
+    <div class="chips" id="status-chips" role="group" aria-label="Deal status">
+      <button type="button" data-status="good" class="chip on">Good <b></b></button>
+      <button type="button" data-status="fair" class="chip on">Fair <b></b></button>
+      <button type="button" data-status="over" class="chip">Over <b></b></button>
+      <button type="button" data-status="no_reference" class="chip">No price <b></b></button>
+    </div>
+    <select id="city" aria-label="Location"><option value="">All locations</option></select>
+    <select id="endsWithin" aria-label="Ending within">
+      <option value="">Any end time</option>
+      <option value="1">Ends within 1 h</option>
+      <option value="3">Within 3 h</option>
+      <option value="6">Within 6 h</option>
+      <option value="24">Within 24 h</option>
+      <option value="72">Within 3 days</option>
+    </select>
+    <select id="source" aria-label="Price source">
+      <option value="">Any price source</option>
+      <option value="amazon">Amazon match</option>
+      <option value="listed_retail">Listed retail</option>
+      <option value="manual">My price</option>
+    </select>
+    <select id="sort" aria-label="Sort">
+      <option value="ending">Ending soonest</option>
+      <option value="savings">Best % savings</option>
+      <option value="savingsAmount">Most $ saved</option>
+      <option value="reference">Highest value</option>
+    </select>
+  </section>
+
+  <p id="summary" class="muted summary"></p>
+  <main id="deals" class="grid" aria-live="polite"></main>
+  <div class="row center"><button id="more" type="button" class="secondary" hidden>Show more</button></div>
+
+  <template id="card-tpl">
+    <article class="card">
+      <a class="thumb" target="_blank" rel="noopener noreferrer"><img alt="" loading="lazy"></a>
+      <div class="body">
+        <div class="meta"><span class="badge"></span><span class="ends"></span><span class="city"></span></div>
+        <h2 class="title"><a target="_blank" rel="noopener noreferrer"></a></h2>
+        <dl class="nums">
+          <div><dt>New price</dt><dd class="ref"></dd></div>
+          <div><dt>Next bid</dt><dd class="next"></dd></div>
+          <div class="hl"><dt>Max bid</dt><dd class="max"></dd></div>
+          <div><dt>Don't go over</dt><dd class="walk"></dd></div>
+        </dl>
+        <p class="savings"></p>
+        <p class="match muted"></p>
+        <p class="flags"></p>
+        <div class="actions">
+          <a class="az" target="_blank" rel="noopener noreferrer">Search Amazon</a>
+          <button type="button" class="set-price link">Set price</button>
+          <button type="button" class="clear-price link" hidden>Clear my price</button>
+          <button type="button" class="lookup link" hidden>Check Amazon</button>
+        </div>
+      </div>
+    </article>
+  </template>
+
+  <script src="/app.js" type="module"></script>
+</body>
+</html>
