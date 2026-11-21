@@ -349,14 +349,16 @@ $('#tab-deals').addEventListener('click', () => setView('deals'));
 $('#tab-list').addEventListener('click', () => setView('list'));
 
 let loadSeq = 0;
-async function loadDeals() {
+async function loadDeals(includeNoPrice = false) {
   const seq = ++loadSeq;
   const params = new URLSearchParams({ limit: state.limit, sort: $('#sort').value });
   if ($('#q').value.trim()) params.set('q', $('#q').value.trim());
   if ($('#city').value) params.set('city', $('#city').value);
   if ($('#endsWithin').value) params.set('endsWithin', $('#endsWithin').value);
   if ($('#source').value) params.set('source', $('#source').value);
-  if (state.statuses.size) params.set('status', [...state.statuses].join(','));
+  const statuses = new Set(state.statuses);
+  if (includeNoPrice) statuses.add('no_reference');
+  if (statuses.size) params.set('status', [...statuses].join(','));
 
   let data;
   try {
@@ -367,6 +369,11 @@ async function loadDeals() {
   }
   if (seq !== loadSeq) return;
 
+  // Nothing priced here (e.g. Modesto, where listings don't state a retail price)? Just show the items.
+  if (!includeNoPrice && !data.deals.length && data.counts.no_reference > 0 && !state.statuses.has('no_reference')) {
+    return loadDeals(true);
+  }
+
   for (const chip of document.querySelectorAll('.chip')) chip.querySelector('b').textContent = data.counts[chip.dataset.status] ?? 0;
 
   const sel = $('#city');
@@ -376,7 +383,7 @@ async function loadDeals() {
   sel.value = cities.some(([c]) => c === current) ? current : '';
 
   const s = data.settings;
-  $('#summary').textContent = `${data.total.toLocaleString()} matching items. Max bid = ${s.targetSavingsPct}% under the new price, all-in with buyer's premium and ${s.salesTaxPct}% tax${s.extraFeePerItem ? ` + $${s.extraFeePerItem} per item` : ''}.`;
+  $('#summary').textContent = `${includeNoPrice ? 'No priced deals here, so showing every item. Star (☆ Want) one to look up its Amazon price, or use "Set price". ' : ''}${data.total.toLocaleString()} matching items. Max bid = ${s.targetSavingsPct}% under the new price, all-in with buyer's premium and ${s.salesTaxPct}% tax${s.extraFeePerItem ? ` + $${s.extraFeePerItem} per item` : ''}.`;
 
   const grid = $('#deals');
   if (!data.deals.length) {
