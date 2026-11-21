@@ -147,3 +147,24 @@ export function normalizeItem(raw) {
     query: searchQuery(title),
   };
 }
+
+/** Latest bid/end time for one item — a single small request, used for watched items near their close. */
+export async function fetchItemLive(itemId, auctionId, { fetchImpl = fetch } = {}) {
+  const res = await fetchImpl(`${BIDRL_BASE}/api/ItemData`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/json', 'User-Agent': USER_AGENT },
+    body: new URLSearchParams({ item_id: String(itemId), auction_id: String(auctionId || 0) }),
+    signal: AbortSignal.timeout(30000),
+  });
+  if (!res.ok) throw new Error(`BidRL ItemData ${itemId}: HTTP ${res.status}`);
+  const d = await res.json();
+  if (!d || String(d.id) !== String(itemId)) throw new Error(`BidRL ItemData ${itemId}: unexpected response`);
+  const live = {
+    currentBid: toNum(d.current_bid),
+    minimumBid: toNum(d.minimum_bid),
+    bidCount: toNum(d.bid_count),
+  };
+  if (toNum(d.end_time) > 0) live.endsAt = toNum(d.end_time) * 1000;
+  if (d.buyer_premium !== undefined && d.buyer_premium !== null) live.buyerPremiumPct = toNum(d.buyer_premium);
+  return live;
+}

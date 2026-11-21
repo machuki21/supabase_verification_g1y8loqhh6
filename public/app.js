@@ -7,6 +7,15 @@ const state = {
   statuses: new Set(['good', 'fair']),
   limit: 60,
   status: null,
+  view: 'deals',
+};
+
+const reload = () => (state.view === 'list' ? loadList() : loadDeals());
+const WATCH_TEXT = {
+  ok: (d) => `Next bid ${money(d.nextBid)} is under your max ${money(d.watch.effectiveMax)}.`,
+  over_max: (d) => `Next bid ${money(d.nextBid)} is past your max ${money(d.watch.effectiveMax)}. Skip it or raise your max.`,
+  no_max: (d) => `Next bid ${money(d.nextBid)}. Set a max bid below.`,
+  ended: (d) => `Ended. Last bid ${money(d.currentBid)}. Check "My Bids" on BidRL to see if you won.`,
 };
 
 function savedFilters() {
@@ -65,7 +74,8 @@ async function loadStatus() {
     else if (s.lastPoll && !s.lastPoll.ok) parts.push(`Last refresh failed: ${s.lastPoll.error}`);
     else parts.push('First refresh in progress…');
     parts.push(s.amazon.enabled ? `Amazon lookups: ${s.amazon.remainingToday}/${s.amazon.dailyLimit} left today` : 'Amazon lookups off (listed retail + your prices only)');
-    if (s.alertsEnabled) parts.push('alerts on');
+    if (s.alertsEnabled) parts.push(`alerts on (reminder ${s.remindMinutes} min before starred items end)`);
+    $('#list-count').textContent = s.watchCount ? `(${s.watchCount})` : '';
     $('#status').textContent = parts.join(' · ');
     $('#refresh').disabled = s.polling;
   } catch (err) {
@@ -98,7 +108,7 @@ $('#settings').addEventListener('submit', async (e) => {
       }),
     });
     $('#settings-msg').textContent = 'Saved.';
-    loadDeals();
+    reload();
   } catch (err) {
     $('#settings-msg').textContent = err.message;
   }
@@ -179,7 +189,7 @@ function renderCard(d) {
     const url = prompt('Link to that listing (optional):', d.override?.url || '') || undefined;
     try {
       await api(`/api/items/${d.id}/override`, { method: 'POST', body: JSON.stringify({ price: Number(price.replace(/[$,]/g, '')), url }) });
-      loadDeals();
+      reload();
     } catch (err) {
       alert(err.message);
     }
@@ -189,7 +199,7 @@ function renderCard(d) {
     clear.hidden = false;
     clear.addEventListener('click', async () => {
       await api(`/api/items/${d.id}/override`, { method: 'DELETE', body: '{}' }).catch((err) => alert(err.message));
-      loadDeals();
+      reload();
     });
   }
   const lookup = node.querySelector('.lookup');
@@ -201,7 +211,7 @@ function renderCard(d) {
       lookup.textContent = 'Checking…';
       try {
         await api(`/api/items/${d.id}/lookup`, { method: 'POST', body: '{}' });
-        await Promise.all([loadDeals(), loadStatus()]);
+        await Promise.all([reload(), loadStatus()]);
       } catch (err) {
         alert(err.message);
         lookup.disabled = false;
@@ -209,8 +219,131 @@ function renderCard(d) {
       }
     });
   }
+  const want = node.querySelector('.want');
+  want.textContent = d.wanted ? '★ Wanted' : '☆ Want';
+  want.classList.toggle('on', Boolean(d.wanted));
+  want.setAttribute('aria-pressed', String(Boolean(d.wanted)));
+  if (d.wanted) node.classList.add('wanted');
+  want.addEventListener('click', async () => {
+    want.disabled = true;
+    try {
+      if (d.wanted) await api(`/api/watchlist/${d.id}`, { method: 'DELETE', body: '{}' });
+      else await api(`/api/watchlist/${d.id}`, { method: 'PUT', body: JSON.stringify({ maxBid: null }) });
+      await Promise.all([reload(), loadStatus()]);
+    } catch (err) {
+      alert(err.message);
+      want.disabled = false;
+    }
+  });
+
+  if (d.watch) renderWatch(node, d);
   return node;
 }
+
+function renderWatch(node, d) {
+  const w = d.watch;
+  const box = node.querySelector('.watch');
+  box.hidden = false;
+  const st = box.querySelector('.watch-status');
+  st.textContent = WATCH_TEXT[w.status](d);
+  st.className = `watch-status ${w.status}`;
+
+  const form = box.querySelector('.watch-max');
+  const input = form.maxBid;
+  if (w.maxBid !== null) input.value = w.maxBid;
+  input.placeholder = d.maxBid !== null ? String(d.maxBid) : '';
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    try {
+      await api(`/api/watchlist/${d.id}`, { method: 'PUT', body: JSON.stringify({ maxBid: input.value === '' ? null : Number(input.value) }) });
+      reload();
+    } catch (err) {
+      alert(err.message);
+    }
+  });
+  if (w.status === 'ended') form.remove();
+
+  const bid = box.querySelector('.bid-btn');
+  const ended = w.status === 'ended';
+  bid.textContent = ended ? 'Auction ended' : w.effectiveMax !== null ? `Bid on BidRL · max ${money(w.effectiveMax)}` : 'Open on BidRL';
+  if (d.url && !ended) bid.href = d.url;
+  else bid.classList.add('disabled');
+  if (w.status === 'over_max') {
+    bid.textContent = `Open on BidRL · past your max ${money(w.effectiveMax)}`;
+    bid.classList.add('muted-btn');
+  }
+
+  const copy = box.querySelector('.copy');
+  if (w.effectiveMax === null || ended) copy.remove();
+  else
+    copy.addEventListener('click', async () => {
+      const text = w.effectiveMax.toFixed(2);
+      try {
+        await navigator.clipboard.writeText(text);
+        copy.textContent = `Copied ${text}`;
+      } catch {
+        prompt('Copy your max bid:', text);
+      }
+    });
+
+  const upd = box.querySelector('.update');
+  const when = box.querySelector('.updated');
+  when.textContent = w.refreshedAt ? `bid checked ${ago(w.refreshedAt)}` : '';
+  if (ended) upd.remove();
+  else
+    upd.addEventListener('click', async () => {
+      upd.disabled = true;
+      upd.textContent = 'Checking…';
+      try {
+        await api(`/api/watchlist/${d.id}/refresh`, { method: 'POST', body: '{}' });
+        reload();
+      } catch (err) {
+        alert(err.message);
+        upd.disabled = false;
+        upd.textContent = 'Update now';
+      }
+    });
+}
+
+async function loadList() {
+  const seq = ++loadSeq;
+  let data;
+  try {
+    data = await api('/api/watchlist');
+  } catch (err) {
+    $('#summary').textContent = `Couldn't load your list: ${err.message}`;
+    return;
+  }
+  if (seq !== loadSeq) return;
+  const live = data.entries.filter((e) => e.watch.status !== 'ended').length;
+  $('#summary').textContent = `${live} active, ${data.entries.length - live} ended.`;
+  const grid = $('#deals');
+  if (!data.entries.length) {
+    const p = document.createElement('p');
+    p.className = 'empty';
+    p.textContent = 'Nothing here yet. Tap ☆ Want on any item in Deals to add it.';
+    grid.replaceChildren(p);
+  } else grid.replaceChildren(...data.entries.map(renderCard));
+  $('#more').hidden = true;
+}
+
+function setView(v) {
+  state.view = v;
+  $('#tab-deals').classList.toggle('on', v === 'deals');
+  $('#tab-list').classList.toggle('on', v === 'list');
+  $('#tab-deals').setAttribute('aria-selected', String(v === 'deals'));
+  $('#tab-list').setAttribute('aria-selected', String(v === 'list'));
+  $('#filters').hidden = v === 'list';
+  $('#list-help').hidden = v !== 'list';
+  try {
+    localStorage.setItem('view', v);
+  } catch {
+    /* fine */
+  }
+  reload();
+}
+$('#tab-deals').addEventListener('click', () => setView('deals'));
+$('#tab-list').addEventListener('click', () => setView('list'));
 
 let loadSeq = 0;
 async function loadDeals() {
@@ -304,9 +437,16 @@ setInterval(() => {
 }, 30000);
 setInterval(() => {
   loadStatus();
-  loadDeals();
+  reload();
 }, 60000);
 
 restoreFilters();
 await loadStatus();
-await Promise.all([loadSettings(), loadDeals()]);
+let startView = 'deals';
+try {
+  startView = localStorage.getItem('view') === 'list' ? 'list' : 'deals';
+} catch {
+  /* fine */
+}
+await loadSettings();
+setView(startView);

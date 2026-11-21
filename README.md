@@ -11,6 +11,18 @@ For every item it shows:
 | **Max bid** | The highest bid that still saves your target % (default 40%) after buyer's premium and sales tax. |
 | **Don't go over** | Break-even bid. Above this, buying it new is cheaper. |
 
+## My list
+
+Tap **☆ Want** on any item to star it. **My list** shows your starred items, soonest-ending first, each with:
+
+- **Your max bid**: type your own, or leave it blank to use the tracker's max bid.
+- **Bid on BidRL · max $X**: opens the item on BidRL. Enter that amount as your max bid there, and BidRL bids for you up to that limit.
+- **Update now**: fetches that item's latest bid from BidRL (one request).
+
+With alerts set up (below), you get a reminder 30 minutes before each starred item ends, with a fresh bid, and an alert if the price passes your max. Ended items stay on the list for 3 days.
+
+The tracker never logs in to BidRL or places bids. That stays in BidRL's own app, so your password and card never touch this tool.
+
 Status: **Good** (next bid ≤ max bid) · **Fair** (between max bid and break-even) · **Over** · **No price**.
 
 The math: `all-in = bid × (1 + buyer's premium) × (1 + sales tax) + extra fee`. The buyer's premium is read from each item (13–15% on BidRL). Sales tax defaults to 8.875% (Modesto; Turlock is about 8.625%), so max bids come out slightly conservative.
@@ -26,7 +38,7 @@ npm start                # http://127.0.0.1:3000
 
 **Windows:** double-click `start.bat`. It starts the tracker in a minimized window and opens the page; double-clicking it again while it's running just opens the page. To have it start automatically when you log in, press `Win+R`, type `shell:startup`, and put a shortcut to `start.bat` in that folder.
 
-The first refresh takes about 30 seconds: 5 requests spaced 5 s apart, per BidRL's robots.txt crawl delay. After that it refreshes every 15 minutes, and the page updates itself every minute.
+The first refresh takes about 30 seconds: 5 requests spaced 5 s apart, per BidRL's robots.txt crawl delay. After that it refreshes every 30 minutes, and the page updates itself every minute.
 
 **On your phone, from anywhere (recommended):** install [Tailscale](https://tailscale.com/download) on your PC and phone and sign in to both with the same account. Then, with the tracker running, run `tailscale serve --bg 3000` once on the PC. It prints a private `https://<pc-name>.<tailnet>.ts.net` link that only your devices can open. Keep the PC awake.
 
@@ -62,6 +74,7 @@ See `.env.example` for all settings. The bid rules (target savings, tax, extra c
 
 ## Caveats
 
+- **BidRL's Terms of Use prohibit "any automatic device… to monitor or copy" their pages.** This tool does that, so use it at your own risk: BidRL could block your IP. It refreshes every 30 minutes, spaces requests 5 s apart, and only covers the locations you choose, to keep its footprint small.
 - **Savings % is only meaningful near the close.** Days out, most lots sit at $1 and look like 99% off. Sort by **Ending soonest** and bid near the end.
 - **Listed "Retail $X" is the seller's claim**, often MSRP, and can be well above street price. Prefer Amazon or your own price for anything you'd pay real money for.
 - **Condition flags** (untested, damaged, open box, …) come from keywords in the listing. Liquidation items can be returns, so raise your target savings for risky items.

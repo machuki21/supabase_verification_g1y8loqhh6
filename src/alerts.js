@@ -15,25 +15,21 @@ export function createAlerter(cfg, { fetchImpl = fetch, log = () => {} } = {}) {
     );
   }
 
-  async function send(deal) {
-    const title = `${deal.savingsPct}% off: ${deal.title.slice(0, 80)}`;
-    const body =
-      `Next bid ${money(deal.nextBid)} (all-in ${money(deal.nextAllIn)}) vs ${deal.reference.source.replace('_', ' ')} ${money(deal.reference.price)}.\n` +
-      `Max bid ${money(deal.maxBid)} · walk away above ${money(deal.walkAwayBid)}.\n` +
-      `${deal.city} · ends ${new Date(deal.endsAt).toLocaleString()}`;
+  async function sendMessage({ title, body, url = null, tags = 'moneybag' }) {
+    if (!enabled) return false;
     const jobs = [];
     if (cfg.ntfyUrl) {
       jobs.push(
         fetchImpl(cfg.ntfyUrl, {
           method: 'POST',
           body,
-          headers: { Title: title.replace(/[^\x20-\x7e]/g, ''), ...(deal.url ? { Click: deal.url } : {}), Tags: 'moneybag' },
+          headers: { Title: title.replace(/[^\x20-\x7e]/g, ''), ...(url ? { Click: url } : {}), Tags: tags },
           signal: AbortSignal.timeout(15000),
         }),
       );
     }
     if (cfg.webhookUrl) {
-      const text = `**${title}**\n${body}${deal.url ? `\n${deal.url}` : ''}`;
+      const text = `**${title}**\n${body}${url ? `\n${url}` : ''}`;
       jobs.push(
         fetchImpl(cfg.webhookUrl, {
           method: 'POST',
@@ -51,5 +47,16 @@ export function createAlerter(cfg, { fetchImpl = fetch, log = () => {} } = {}) {
     return results.some((r) => r.status === 'fulfilled' && r.value.ok);
   }
 
-  return { enabled, qualifies, send };
+  function send(deal) {
+    return sendMessage({
+      title: `${deal.savingsPct}% off: ${deal.title.slice(0, 80)}`,
+      body:
+        `Next bid ${money(deal.nextBid)} (all-in ${money(deal.nextAllIn)}) vs ${deal.reference.source.replace('_', ' ')} ${money(deal.reference.price)}.\n` +
+        `Max bid ${money(deal.maxBid)} · walk away above ${money(deal.walkAwayBid)}.\n` +
+        `${deal.city} · ends ${new Date(deal.endsAt).toLocaleString()}`,
+      url: deal.url,
+    });
+  }
+
+  return { enabled, qualifies, send, sendMessage };
 }

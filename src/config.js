@@ -31,7 +31,7 @@ export function loadConfig() {
     dataFile: str('DATA_FILE', 'data/db.json'),
 
     // BidRL polling. robots.txt asks for Crawl-delay: 5, so never go below 5s between requests.
-    pollMinutes: num('POLL_MINUTES', 15, { min: 5 }),
+    pollMinutes: num('POLL_MINUTES', 30, { min: 5 }),
     requestDelayMs: Math.max(5000, num('BIDRL_REQUEST_DELAY_MS', 5000)),
     perPage: num('BIDRL_PER_PAGE', 500, { min: 10, max: 500 }),
     maxPages: num('BIDRL_MAX_PAGES', 60, { min: 1 }),
@@ -55,6 +55,11 @@ export function loadConfig() {
       salesTaxPct: num('SALES_TAX_PCT', 8.875, { min: 0, max: 20 }),
       extraFeePerItem: num('EXTRA_FEE_PER_ITEM', 0, { min: 0 }),
       trustListedRetail: str('TRUST_LISTED_RETAIL', 'true') !== 'false',
+    },
+
+    // "Want" list: phone reminder this many minutes before a starred item ends.
+    watch: {
+      remindMinutes: num('WATCH_REMIND_MINUTES', 30, { min: 1, max: 1440 }),
     },
 
     alerts: {

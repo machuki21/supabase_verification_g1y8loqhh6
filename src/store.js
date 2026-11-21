@@ -5,6 +5,7 @@ const EMPTY = () => ({
   items: {},
   amazonCache: {},
   overrides: {},
+  watchlist: {},
   settings: {},
   lookupUsage: { date: '', count: 0 },
   alerted: {},

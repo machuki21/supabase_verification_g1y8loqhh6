@@ -9,6 +9,7 @@ import { fetchAllItems, fetchLocations, resolveLocations } from './bidrl.js';
 import { createAmazonLookup, lookupCandidates, amazonSearchUrl } from './amazon/index.js';
 import { chooseReference, evaluateDeal } from './pricing.js';
 import { createAlerter } from './alerts.js';
+import { createWatchlist } from './watchlist.js';
 import { cacheKey } from './text.js';
 
 const log = (...a) => console.log(new Date().toISOString(), ...a);
@@ -18,6 +19,7 @@ export function createApp(cfg, { fetchImpl = fetch } = {}) {
   const amazon = createAmazonLookup(cfg.amazon, store, { fetchImpl, log });
   const alerter = createAlerter(cfg.alerts, { fetchImpl, log });
 
+  let watchTimer = null;
   let polling = false;
   let locationIds = null; // resolved lazily from names; null = not resolved yet
   let locationNames = [];
@@ -45,8 +47,12 @@ export function createApp(cfg, { fetchImpl = fetch } = {}) {
       override,
       reference,
       ...evaluateDeal(item, reference, s),
+      wanted: Boolean(store.data.watchlist[item.id]),
+      myMaxBid: store.data.watchlist[item.id]?.maxBid ?? null,
     };
   }
+
+  const watchlist = createWatchlist({ store, buildDeal, alerter, remindMinutes: cfg.watch.remindMinutes, fetchImpl, log });
 
   async function runLookups() {
     if (!amazon.enabled) return;
@@ -114,10 +120,12 @@ export function createApp(cfg, { fetchImpl = fetch } = {}) {
       store.data.items = Object.fromEntries(items.filter((i) => i.endsAt > now).map((i) => [i.id, i]));
       store.data.lastPoll = { startedAt, finishedAt: Date.now(), ok: true, count: Object.keys(store.data.items).length };
       prune();
+      watchlist.syncFromPoll();
       store.save();
       log(`Poll done: ${store.data.lastPoll.count} open items`);
       await runLookups();
       await runAlerts();
+      await watchlist.tick();
     } catch (err) {
       // Keep the previous item list; just record the failure.
       const msg = err.cause?.message ? `${err.message} (${err.cause.message})` : err.message;
@@ -246,6 +254,9 @@ export function createApp(cfg, { fetchImpl = fetch } = {}) {
       lastPoll: store.data.lastPoll,
       itemCount: Object.keys(store.data.items).length,
       locations: locationNames.length ? locationNames : cfg.locations,
+      pollMinutes: cfg.pollMinutes,
+      watchCount: Object.keys(store.data.watchlist).length,
+      remindMinutes: cfg.watch.remindMinutes,
       amazon: {
         enabled: amazon.enabled,
         provider: cfg.amazon.provider,
@@ -284,6 +295,7 @@ export function createApp(cfg, { fetchImpl = fetch } = {}) {
     if (req.method === 'GET' && p === '/api/deals') return send(res, 200, listDeals(url.searchParams));
     if (req.method === 'GET' && p === '/api/status') return send(res, 200, status());
     if (req.method === 'GET' && p === '/api/settings') return send(res, 200, settings());
+    if (req.method === 'GET' && p === '/api/watchlist') return send(res, 200, { entries: watchlist.all() });
 
     const isWrite = ['POST', 'PUT', 'DELETE'].includes(req.method);
     if (isWrite && p.startsWith('/api/') && !sameOriginWrite(req)) {
@@ -301,6 +313,34 @@ export function createApp(cfg, { fetchImpl = fetch } = {}) {
       if (polling) return send(res, 409, { error: 'A refresh is already running' });
       poll();
       return send(res, 202, { started: true });
+    }
+
+    const wm = p.match(/^\/api\/watchlist\/(\d+)(\/refresh)?$/);
+    if (wm) {
+      const id = wm[1];
+      if (!wm[2] && req.method === 'PUT') {
+        const body = await readJson(req);
+        let maxBid = null;
+        if (body.maxBid !== undefined && body.maxBid !== null && body.maxBid !== '') {
+          maxBid = Number(body.maxBid);
+          if (!Number.isFinite(maxBid) || maxBid <= 0 || maxBid > 100000) return send(res, 400, { error: 'Max bid must be between $0 and $100,000' });
+          maxBid = Math.floor(maxBid * 100) / 100;
+        }
+        const v = watchlist.set(id, maxBid);
+        return v ? send(res, 200, v) : send(res, 404, { error: 'Item not found (it may have ended)' });
+      }
+      if (!wm[2] && req.method === 'DELETE') {
+        watchlist.remove(id);
+        return send(res, 200, { removed: true });
+      }
+      if (wm[2] && req.method === 'POST') {
+        if (!watchlist.has(id)) return send(res, 404, { error: 'Not on your list' });
+        try {
+          return send(res, 200, await watchlist.refresh(id));
+        } catch (err) {
+          return send(res, 502, { error: `Couldn't reach BidRL: ${err.message}` });
+        }
+      }
     }
 
     const m = p.match(/^\/api\/items\/(\d+)\/(override|lookup)$/);
@@ -354,12 +394,15 @@ export function createApp(cfg, { fetchImpl = fetch } = {}) {
     server,
     store,
     poll,
+    watchlist,
     start() {
       server.listen(cfg.port, cfg.host, () => log(`BidRL Deal Tracker on http://${cfg.host}:${cfg.port}`));
       schedule();
+      watchTimer = setInterval(() => watchlist.tick().catch((err) => log(`Watch tick failed: ${err.message}`)), 60000);
     },
     stop() {
       clearTimeout(timer);
+      clearInterval(watchTimer);
       server.close();
       store.flush();
     },
