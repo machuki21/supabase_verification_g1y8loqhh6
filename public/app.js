@@ -377,10 +377,30 @@ async function loadDeals() {
 
   const grid = $('#deals');
   if (!data.deals.length) {
+    const box = document.createElement('div');
+    box.className = 'empty';
     const p = document.createElement('p');
-    p.className = 'empty';
-    p.textContent = state.status?.itemCount ? 'No items match these filters.' : 'Waiting for the first refresh from BidRL…';
-    grid.replaceChildren(p);
+    box.append(p);
+    const hidden = Object.entries(data.counts).filter(([k, n]) => n > 0 && !state.statuses.has(k));
+    if (!state.status?.itemCount) p.textContent = 'Waiting for the first refresh from BidRL…';
+    else if (hidden.length) {
+      const n = hidden.reduce((t, [, c]) => t + c, 0);
+      const noPrice = data.counts.no_reference;
+      p.textContent =
+        noPrice && hidden.some(([k]) => k === 'no_reference')
+          ? `No priced deals here. ${noPrice.toLocaleString()} items have no price to compare yet: their listing doesn't state a retail price and no Amazon price has been found. Open one, tap "Search Amazon", then "Set price" to get a max bid.`
+          : `${n.toLocaleString()} items are hidden by the status buttons above.`;
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.textContent = `Show all ${n.toLocaleString()}`;
+      btn.addEventListener('click', () => {
+        for (const [k] of hidden) state.statuses.add(k);
+        for (const chip of document.querySelectorAll('.chip')) chip.classList.toggle('on', state.statuses.has(chip.dataset.status));
+        onFilter();
+      });
+      box.append(btn);
+    } else p.textContent = 'No items match these filters.';
+    grid.replaceChildren(box);
   } else grid.replaceChildren(...data.deals.map(renderCard));
   $('#more').hidden = data.total <= data.deals.length;
 }

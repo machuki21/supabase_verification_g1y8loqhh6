@@ -212,12 +212,8 @@ export function createApp(cfg, { fetchImpl = fetch } = {}) {
       .filter((i) => i.endsAt > now)
       .map((i) => buildDeal(i, s));
 
-    const counts = { good: 0, fair: 0, over: 0, no_reference: 0 };
     const cities = {};
-    for (const d of deals) {
-      counts[d.status]++;
-      if (d.city) cities[d.city] = (cities[d.city] || 0) + 1;
-    }
+    for (const d of deals) if (d.city) cities[d.city] = (cities[d.city] || 0) + 1;
 
     const q = (params.get('q') || '').toLowerCase().trim();
     const city = params.get('city') || '';
@@ -228,10 +224,15 @@ export function createApp(cfg, { fetchImpl = fetch } = {}) {
 
     if (q) deals = deals.filter((d) => `${d.title} ${d.category} ${d.lotNumber}`.toLowerCase().includes(q));
     if (city) deals = deals.filter((d) => d.city === city);
-    if (statuses.length) deals = deals.filter((d) => statuses.includes(d.status));
-    if (Number.isFinite(minSavings) && params.has('minSavings')) deals = deals.filter((d) => d.savingsPct !== null && d.savingsPct >= minSavings);
     if (Number.isFinite(endsWithin) && endsWithin > 0) deals = deals.filter((d) => d.endsAt - now <= endsWithin * 3600000);
     if (source) deals = deals.filter((d) => d.reference?.source === source);
+
+    // Status counts reflect the other filters (location, search, …) so the chips match what you'd see.
+    const counts = { good: 0, fair: 0, over: 0, no_reference: 0 };
+    for (const d of deals) counts[d.status]++;
+
+    if (statuses.length) deals = deals.filter((d) => statuses.includes(d.status));
+    if (Number.isFinite(minSavings) && params.has('minSavings')) deals = deals.filter((d) => d.savingsPct !== null && d.savingsPct >= minSavings);
 
     const sorters = {
       savings: (a, b) => (b.savingsPct ?? -1e9) - (a.savingsPct ?? -1e9) || a.endsAt - b.endsAt,
